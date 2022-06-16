@@ -39,19 +39,19 @@ listado = pd.merge(pd.merge(municipios,
                    right_on = 'CODIGO',
                    how = 'left')[['NOMBRE ',
                                   'LITERAL_y',
-                                  'LITERAL_x']]
+                                  'LITERAL_x',
+                                  'CMUN',
+                                  'CPRO']]
 
 # Rename columns
-listado.rename(columns = {'NOMBRE ':'municipio',
+listado.rename(columns = {'LITERAL_x':'ccaa',
                           'LITERAL_y':'provincia',
-                          'LITERAL_x':'ccaa'},
+                          'NOMBRE ':'municipio',
+                          'CMUN':'codmun',
+                          'CPRO':'codpro'},
                inplace = True)
 
 listado
-
-# Export data
-#listado.to_csv('/Users/enriquecarnerofernandez/Documents/BDNS/cured_data/municipios.csv',
-#               index = False)
 
 ################################## COMARCAS ###################################
 
@@ -65,10 +65,13 @@ comarcas.rename(columns = {'FUENTE: Ministerio de Agricultura, Pesca y Alimentac
                            'Unnamed: 2':'municipio'},
                 inplace = True)
 
-# Drop numbers in comarca column
+# Fix comarca column and create column for municipality id
+comarcas['codmun'] = ''
+
 for i in range(len(comarcas.comarca)):
     if isinstance(comarcas['comarca'][i],str):
         if comarcas.comarca[i][0] != 'C':
+            comarcas.codmun[i] = comarcas.comarca[i]
             comarcas.comarca[i] = np.nan
         else:
             comarcas.comarca[i] = comarcas.comarca[i].split(':')[-1][1:]
@@ -82,20 +85,46 @@ comarcas['comarca'].fillna(method = 'ffill',
 # Drop nan values
 comarcas = comarcas.dropna().reset_index(drop = True)
 
+# Reference index dataframe for provincias
+indices = pd.DataFrame(comarcas.provincia.unique(),
+                       columns = ['provincia'])
+indices['codpro'] = ''
+
+for i in indices.index:
+    indices.codpro[i] = i + 1
+
 # Fix names
 for i in range(len(comarcas.municipio)):
     if '(' in str(comarcas.municipio[i]):
         comarcas.municipio[i] = comarcas.municipio[i].split('(')[1][:-1] + ' ' + comarcas.municipio[i].split('(')[0][:-1]
 
-comarcas
+# Unify municipality id
+for i in comarcas.index:
+   while comarcas.codmun[i][0] == '0':
+       comarcas.codmun[i] = comarcas.codmun[i][1:]
+
+# Unify variable types
+comarcas.codmun = pd.to_numeric(comarcas.codmun)
+indices.codpro = pd.to_numeric(indices.codpro)
 
 # Merge municipios & comarcas dataframes
-administraciones = pd.merge(listado,
-                            comarcas[['comarca',
-                                      'municipio']],
-                            on = 'municipio',
-                            how = 'left')
+regiones = pd.merge(listado,
+                    pd.merge(comarcas,
+                             indices,
+                             on = 'provincia',
+                             how = 'left')[['comarca',
+                                            'codmun',
+                                            'codpro']],
+                    right_on = ['codmun',
+                                'codpro'],
+                    left_on = ['codmun',
+                               'codpro'],
+                    how = 'left').drop(columns = ['codpro',
+                                                  'codmun'])[['ccaa',
+                                                              'provincia',
+                                                              'comarca',
+                                                              'municipio']]
 
-administraciones
-
-administraciones.query('provincia == "Alicante/Alacant"')
+# Export data
+regiones.to_csv('/Users/enriquecarnerofernandez/Documents/BDNS/cured_data/regiones.csv',
+                index = False)
