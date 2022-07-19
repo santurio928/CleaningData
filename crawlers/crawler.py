@@ -4,9 +4,9 @@ from urllib.error import HTTPError
 import pandas as pd
 
 
-convocatorias = pd.read_csv('/Users/enriquecarnerofernandez/Documents/BDNS/raw_data/bdns/convocatoriasHeader.csv',
+convocatorias = pd.read_csv('convocatoriasHeader.csv',
                             header = 1).iloc[:,2:10]
-concesiones = pd.read_csv('/Users/enriquecarnerofernandez/Documents/BDNS/raw_data/bdns/juridicasHeader.csv',
+concesiones = pd.read_csv('juridicasHeader.csv',
                           header = 1).iloc[:,3:16]
 
 
